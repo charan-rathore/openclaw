@@ -67,6 +67,58 @@ describe("resolveRemoteEmbeddingBearerClient", () => {
     }
   });
 
+  it("sends native OpenAI embeddings to the embeddings API when chat uses the subscription route", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    const client = await resolveRemoteEmbeddingBearerClient({
+      provider: "openai",
+      defaultBaseUrl: "https://api.openai.com/v1",
+      options: {
+        config: {
+          models: {
+            providers: {
+              openai: {
+                ...configuredProvider,
+                api: "openai-chatgpt-responses",
+                baseUrl: "https://chatgpt.com/backend-api/codex",
+              },
+            },
+          },
+        } as never,
+        model: "text-embedding-3-small",
+      },
+    });
+
+    expect(client.baseUrl).toBe("https://api.openai.com/v1");
+    expect(client.headers.Authorization).toBe("Bearer provider-key");
+    expect(client.headers).not.toHaveProperty("X-Provider-Tenant");
+  });
+
+  it("keeps an explicit remote destination when chat uses the subscription route", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    const client = await resolveRemoteEmbeddingBearerClient({
+      provider: "openai",
+      defaultBaseUrl: "https://api.openai.com/v1",
+      options: {
+        config: {
+          models: {
+            providers: {
+              openai: {
+                ...configuredProvider,
+                api: "openai-chatgpt-responses",
+                baseUrl: "https://chatgpt.com/backend-api/codex",
+              },
+            },
+          },
+        } as never,
+        model: "text-embedding-3-small",
+        remote: { baseUrl: "https://remote.example.test/v1", apiKey: "remote-key" },
+      },
+    });
+
+    expect(client.baseUrl).toBe("https://remote.example.test/v1");
+    expect(client.headers.Authorization).toBe("Bearer remote-key");
+  });
+
   it("fails before egress when a remote destination has no destination-owned auth", async () => {
     await expect(
       resolveRemoteEmbeddingBearerClient({

@@ -91,7 +91,11 @@ export async function resolveRemoteEmbeddingBearerClient(params: {
   });
   const remoteBaseUrl = normalizeOptionalString(remote?.baseUrl);
   const providerConfig = params.options.config.models?.providers?.[params.provider];
-  const providerBaseUrl = normalizeOptionalString(providerConfig?.baseUrl) || params.defaultBaseUrl;
+  // The ChatGPT subscription route only serves chat; its base URL and headers do not apply to embeddings.
+  const chatOnlyRoute = providerConfig?.api === "openai-chatgpt-responses";
+  const providerBaseUrl =
+    (chatOnlyRoute ? undefined : normalizeOptionalString(providerConfig?.baseUrl)) ||
+    params.defaultBaseUrl;
   const baseUrl = remoteBaseUrl || providerBaseUrl;
   const providerOwnsDestination = embeddingProviderOwnsDestination({
     baseUrl,
@@ -99,7 +103,7 @@ export async function resolveRemoteEmbeddingBearerClient(params: {
   });
   const headerOverrides = resolveEmbeddingHeaders(
     {
-      headers: providerOwnsDestination ? providerConfig?.headers : undefined,
+      headers: providerOwnsDestination && !chatOnlyRoute ? providerConfig?.headers : undefined,
       path: `models.providers.${params.provider}.headers`,
     },
     {
